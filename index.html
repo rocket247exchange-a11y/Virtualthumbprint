@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Thumbprint Scanner</title>
+    <style>
+        /* Base Styling */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #0a0a0a; 
+            color: #ffffff; 
+            text-align: center; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+        }
+
+        .screen { 
+            display: none; 
+            width: 100%; 
+            max-width: 400px; 
+            padding: 30px 20px; 
+            border-radius: 12px; 
+            background: #1a1a1a; 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8); 
+            border: 1px solid #333;
+        }
+
+        .active { display: block; }
+
+        h2 { margin-top: 0; color: #e0e0e0; }
+
+        button { 
+            background: #00ff88; 
+            color: #000; 
+            border: none; 
+            padding: 15px 20px; 
+            font-size: 16px; 
+            font-weight: bold; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            margin-top: 20px;
+            width: 100%;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover { background: #00cc6a; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4); }
+
+        .instruction { font-size: 14px; color: #888; margin-bottom: 20px; }
+
+        /* Scanner Area Styling */
+        #scanner-area { 
+            width: 160px; 
+            height: 220px; 
+            border: 2px dashed #444; 
+            border-radius: 30px; 
+            margin: 20px auto; 
+            position: relative; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            overflow: hidden; 
+            transition: 0.3s;
+            background: #111;
+        }
+
+        #scan-text { color: #555; font-weight: bold; pointer-events: none; }
+
+        /* Dramatic Scanning Animations */
+        .scan-line { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 4px; 
+            background: #00ff88; 
+            box-shadow: 0 0 15px 5px rgba(0, 255, 136, 0.8); 
+            display: none; 
+            animation: scan 1.2s infinite linear; 
+        }
+
+        @keyframes scan { 
+            0% { top: 0; } 
+            50% { top: 100%; } 
+            100% { top: 0; } 
+        }
+
+        .scanning-bg { animation: dramaticColor 0.4s infinite alternate; }
+
+        @keyframes dramaticColor { 
+            0% { background-color: rgba(0, 255, 136, 0.05); border-color: #00ff88; box-shadow: inset 0 0 20px rgba(0,255,136,0.2); } 
+            100% { background-color: rgba(0, 255, 136, 0.25); border-color: #00ff88; box-shadow: inset 0 0 50px rgba(0,255,136,0.5); } 
+        }
+
+        #scan-status { height: 20px; color: #888; font-size: 14px; transition: color 0.3s; }
+
+        /* Results Screen */
+        .success-text { color: #00ff88; text-shadow: 0 0 10px rgba(0, 255, 136, 0.4); }
+        
+        #thumbprint-image {
+            width: 140px; 
+            height: auto;
+            margin: 15px auto;
+            display: block;
+            border-radius: 12px;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.3)); 
+            background: #f4f4f4; /* Matches the slightly off-white background of your image */
+            padding: 10px;
+            border: 1px solid #333;
+            /* Multiply blend mode helps the white background blend into dark themes better if needed */
+            mix-blend-mode: normal; 
+        }
+
+        .result-details { 
+            text-align: left; 
+            background: #252525; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin: 20px 0; 
+            border-left: 4px solid #00ff88;
+        }
+
+        .result-details p { margin: 8px 0; font-size: 15px; color: #ccc;}
+        .result-details strong { color: #fff; }
+    </style>
+</head>
+<body>
+
+    <div id="screen-start" class="screen active">
+        <h2>Document Verification</h2>
+        <p class="instruction">Biometric signature required to proceed.</p>
+        <button onclick="showScreen('screen-scan')">Start Thumb Printing Now</button>
+    </div>
+
+    <div id="screen-scan" class="screen">
+        <h2>Identity Scanner</h2>
+        <p class="instruction">Click and hold your thumb firmly on the scanner area below until the scan completes.</p>
+        
+        <div id="scanner-area" 
+             onmousedown="startScan()" onmouseup="stopScan()" onmouseleave="stopScan()"
+             ontouchstart="startScan()" ontouchend="stopScan()">
+            <span id="scan-text">PRESS & HOLD</span>
+            <div id="scan-line" class="scan-line"></div>
+        </div>
+        
+        <p id="scan-status">Waiting for fingerprint...</p>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <h2 class="success-text">Thumbprint Captured!</h2>
+        
+        <img id="thumbprint-image" src="image.png" alt="Realistic Thumbprint">
+
+        <div class="result-details">
+            <p><strong>Name:</strong> JASVIR SINGH DHILLON</p>
+            <p><strong>Amount:</strong> $10,000</p>
+        </div>
+        
+        <button onclick="downloadImage()">Download Thumbprint</button>
+    </div>
+
+    <script>
+        let scanTimeout;
+        const scanDuration = 3000;
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function startScan() {
+            const scannerArea = document.getElementById('scanner-area');
+            const scanLine = document.getElementById('scan-line');
+            const scanStatus = document.getElementById('scan-status');
+            const scanText = document.getElementById('scan-text');
+            
+            scannerArea.classList.add('scanning-bg');
+            scanLine.style.display = 'block';
+            scanText.style.display = 'none';
+            scanStatus.innerText = "Scanning... Hold still!";
+            scanStatus.style.color = "#00ff88";
+
+            scanTimeout = setTimeout(() => {
+                stopScan();
+                showScreen('screen-result');
+            }, scanDuration);
+        }
+
+        function stopScan() {
+            clearTimeout(scanTimeout);
+            const scannerArea = document.getElementById('scanner-area');
+            const scanLine = document.getElementById('scan-line');
+            const scanStatus = document.getElementById('scan-status');
+            const scanText = document.getElementById('scan-text');
+
+            scannerArea.classList.remove('scanning-bg');
+            scanLine.style.display = 'none';
+            scanText.style.display = 'block';
+            scanStatus.innerText = "Waiting for fingerprint...";
+            scanStatus.style.color = "#888";
+        }
+
+        function downloadImage() {
+            const img = document.getElementById('thumbprint-image');
+            const imageUrl = img.src;
+
+            const downloadLink = document.createElement('a');
+            downloadLink.href = imageUrl;
+            downloadLink.download = 'JASVIR_SINGH_DHILLON_Thumbprint.png';
+            
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    </script>
+</body>
+</html>
